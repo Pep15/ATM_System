@@ -1,0 +1,402 @@
+// ATM_system(Solution).cpp : This file contains the 'main' function. Program execution begins and ends there.
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <iomanip>
+using namespace std;
+const string FileClients = "Clients.txt";
+void Login();
+void BackToGoScreen();
+void CheckTotalBalance();
+void QuickWithdrawMenue();
+int ReadNumber(string Message)
+{
+	int Number = 0;
+	cout << Message;
+	cin >> Number;
+
+	return Number;
+}
+enum EnATMScreenMain
+{
+	QuickWithdraw = 1,
+	NormalWithdraw = 2,
+	Deposit = 3,
+	CheckBalance = 4,
+	Logout = 5
+};
+enum EnQuickWithdraw
+{
+	Twenty = 1,
+	Fifty = 2,
+	OneHundred = 3,
+	TwoHundred = 4,
+	FourHundred = 5,
+	SixHundred = 6,
+	EightHundred = 7,
+	OneThousand = 8,
+	Exit = 9
+};
+struct StClients
+{
+	string AccountNumber;
+	string PinCode;
+	string ClientName;
+	string Phone;
+	double AccountBalance;
+	bool MarkFlagDelete = false;
+};
+StClients ClinetRecords;
+string ReadString(string Massage)
+{
+	string S1;
+	cout << Massage;
+	getline(cin >> ws, S1);
+
+	return S1;
+}
+vector <string> ParasingData(string S1, string Delemiter = "#//#")
+{
+	vector <string> vString;
+	short pos = 0;
+	string sWord;
+	while ((pos = S1.find(Delemiter)) != std::string::npos)
+	{
+		sWord = S1.substr(0, pos);
+		if (sWord != "")
+		{
+			vString.push_back(sWord);
+		}
+		S1.erase(0, pos + Delemiter.length());
+	}
+	if (S1 != "")
+	{
+		vString.push_back(S1);
+	}
+
+	return vString;
+}
+StClients ConvertLineToRecord(string S1, string Delimiter = "#//#")
+{
+	vector <string> vString;
+	StClients Clinets;
+	vString = ParasingData(S1, Delimiter);
+
+	Clinets.AccountNumber = vString[0];
+	Clinets.PinCode = vString[1];
+	Clinets.ClientName = vString[2];
+	Clinets.Phone = vString[3];
+	Clinets.AccountBalance = stod(vString[4]);
+
+	return Clinets;
+}
+string ConvertRocordToLine(StClients& CLinets, string Delimiter = "#//#")
+{
+	string DataLine;
+	DataLine += CLinets.AccountNumber + Delimiter;
+	DataLine += CLinets.PinCode + Delimiter;
+	DataLine += CLinets.ClientName + Delimiter;
+	DataLine += CLinets.Phone + Delimiter;
+	DataLine += to_string(CLinets.AccountBalance);
+
+	return DataLine;
+}
+vector <StClients> GetDataFromFile(string FileName)
+{
+	fstream MyFile;
+	vector <StClients> vClients;
+	MyFile.open(FileName, ios::in);
+	if (MyFile.is_open())
+	{
+		string DataLine;
+		StClients Clinets;
+		while (getline(MyFile, DataLine))
+		{
+			Clinets = ConvertLineToRecord(DataLine);
+			vClients.push_back(Clinets);
+		}
+
+		MyFile.close();
+	}
+
+	return vClients;
+}
+vector <StClients> SaveDataCLientsInFile(string FileName, vector <StClients>& vClients)
+{
+	fstream Myfile;
+	Myfile.open(FileName, ios::out);
+	if (Myfile.is_open())
+	{
+		StClients CLients;
+		string DataLine;
+		for (StClients& C : vClients)
+		{
+			if (C.MarkFlagDelete == false)
+			{
+				DataLine = ConvertRocordToLine(C);
+
+				Myfile << DataLine << endl;
+			}
+		}
+
+		Myfile.close();
+	}
+
+	return vClients;
+}
+bool DepoistBalanceToClientByAccounNumber(double Depoist)
+{
+	vector <StClients> VClients = GetDataFromFile(FileClients);
+	char Answer = 'n';
+	cout << "\n\nAre you sure you want perfrom this transaction? y/n? ";
+	cin >> Answer;
+	if (Answer == 'y' || Answer == 'Y')
+	{
+		for (StClients& C : VClients)
+		{
+			C.AccountBalance += Depoist;
+			SaveDataCLientsInFile(FileClients, VClients);
+			cout << "\n\nDone Successfully. New balance is: " << C.AccountBalance << endl << endl;
+
+			return true;
+
+		}
+
+		return false;
+	}
+}
+bool findAccountNumberClients(string AccountNumbr, vector <StClients>& vClients, StClients& Clients)
+{
+
+	for (StClients& C : vClients)
+	{
+		if (C.AccountNumber == AccountNumbr)
+		{
+			Clients = C;
+			return true;
+		}
+	}
+
+	return false;
+}
+void NormalWithDrawScreen()
+{
+	system("cls");
+	cout << "=================================\n";
+	cout << "\tNormal Withdraw Screen\n";
+	cout << "=================================\n";
+
+	int withdraw = 0;
+	vector <StClients> vClients = GetDataFromFile(FileClients);
+	cout << "\nEnter an amount multiple of 5's? ";
+	cin >> withdraw;
+	for (StClients& C : vClients)
+	{
+
+		while (withdraw % 5 != 0)
+		{
+			cout << "\nEnter an amount multiple of 5's? ";
+			cin >> withdraw;
+		}
+
+	}
+	if (withdraw > ClinetRecords.AccountBalance)
+	{
+		cout << "\nAmount Exceeds the balance, you cant withdraw up to:" << ClinetRecords.AccountBalance << endl;
+		cout << "\nPlease enter another amount? \n";
+		cin >> withdraw;
+	}
+
+	DepoistBalanceToClientByAccounNumber(withdraw * -1);
+	ClinetRecords.AccountBalance -= withdraw;
+}
+void ShowDepositScreen()
+{
+	system("cls");
+	cout << "\n-----------------------------\n";
+	cout << "\tDeposit Screen";
+	cout << "\n-----------------------------\n";
+	vector <StClients> vClients = GetDataFromFile(FileClients);
+	double Deposit = 0;
+	cout << "\n\nPlease enter deposit amount? ";
+	cin >> Deposit;
+
+	DepoistBalanceToClientByAccounNumber(Deposit);
+	ClinetRecords.AccountBalance += Deposit;
+}
+void CheckTotalBalance()
+{
+	StClients Clinets;
+
+	cout << "===================================\n";
+	cout << "\tCheck Balance Screen\n";
+	cout << "===================================\n";
+	cout << "Your Balance is " << ClinetRecords.AccountBalance << endl;
+
+}
+void MenueATM(EnATMScreenMain ATM)
+{
+	switch (ATM)
+	{
+	case QuickWithdraw:
+		system("cls");
+		QuickWithdrawMenue();
+		BackToGoScreen();
+		break;
+	case NormalWithdraw:
+		system("cls");
+		NormalWithDrawScreen();
+		BackToGoScreen();
+		break;
+	case Deposit:
+		system("cls");
+		ShowDepositScreen();
+		BackToGoScreen();
+		break;
+	case CheckBalance:
+		system("cls");
+		CheckTotalBalance();
+		BackToGoScreen();
+		break;
+	case Logout:
+		Login();
+		break;
+	}
+}
+void QuickWithdrawScreen(EnQuickWithdraw QuickWithDraw)
+{
+	switch (QuickWithDraw)
+	{
+	case EnQuickWithdraw::Twenty:
+		DepoistBalanceToClientByAccounNumber(20 * -1);
+		ClinetRecords.AccountBalance -= 20;
+		break;
+	case EnQuickWithdraw::Fifty:
+		DepoistBalanceToClientByAccounNumber(50 * -1);
+		ClinetRecords.AccountBalance -= 50;
+		break;
+	case EnQuickWithdraw::OneHundred:
+		DepoistBalanceToClientByAccounNumber(100 * -1);
+		ClinetRecords.AccountBalance -= 100;
+		break;
+	case EnQuickWithdraw::TwoHundred:
+		DepoistBalanceToClientByAccounNumber(200 * -1);
+		ClinetRecords.AccountBalance -= 200;
+		break;
+	case EnQuickWithdraw::FourHundred:
+		DepoistBalanceToClientByAccounNumber(400 * -1);
+		ClinetRecords.AccountBalance -= 400;
+		break;
+	case EnQuickWithdraw::SixHundred:
+		DepoistBalanceToClientByAccounNumber(600 * -1);
+		ClinetRecords.AccountBalance -= 400;
+		break;
+	case EnQuickWithdraw::EightHundred:
+		DepoistBalanceToClientByAccounNumber(800 * -1);
+		ClinetRecords.AccountBalance -= 800;
+		break;
+	case EnQuickWithdraw::OneThousand:
+		DepoistBalanceToClientByAccounNumber(1000 * -1);
+		ClinetRecords.AccountBalance -= 1000;
+		break;
+	case EnQuickWithdraw::Exit:
+		BackToGoScreen();
+		break;
+	}
+}
+void QuickWithdrawMenue()
+{
+	StClients Clients;
+	system("cls");
+	cout << "================================\n";
+	cout << "\tQuick Withdraw\n";
+	cout << "================================\n";
+	cout << "\t[1] 20        \t[2] 50\n";
+	cout << "\t[3] 100        \t[4] 200\n";
+	cout << "\t[5] 400        \t[6] 600\n";
+	cout << "\t[7] 800        \t[8] 1000\n";
+	cout << "\t[9] Exit\n";
+	cout << "================================\n";
+	ClinetRecords.AccountBalance;
+	QuickWithdrawScreen((EnQuickWithdraw)ReadNumber("Choose what to withdraw from[1] to [8]? "));
+
+}
+void ShowMenueATMScreen()
+{
+	system("cls");
+	cout << "====================================\n";
+	cout << "\tATM Main Menue Screen\n";
+	cout << "====================================\n";
+	cout << "\t[1] Quick Withdraw.\n";
+	cout << "\t[2] Normal Withdraw.\n";
+	cout << "\t[3] Deposit.\n";
+	cout << "\t[4] Check Balance.\n";
+	cout << "\t[5] Logout.\n";
+	cout << "====================================\n";
+	MenueATM((EnATMScreenMain)ReadNumber("Choose what do you want to do? [1 to 5]: "));
+}
+void BackToGoScreen()
+{
+	cout << "Press any key to go back to Main Menue...\n\n";
+	system("pause > 0");
+	system("cls");
+	ShowMenueATMScreen();
+
+
+}
+bool FindUserByUserNameAndPaasword(string AccountNumber, string Pincode, StClients& Client)
+{
+	vector <StClients> vClient = GetDataFromFile(FileClients);
+	for (StClients& C : vClient)
+	{
+		if (C.AccountNumber == AccountNumber && C.PinCode == Pincode)
+		{
+			Client = C;
+			return true;
+		}
+	}
+
+	return false;
+}
+bool LoadUserInfo(string AccoutnNumber, string PinCode)
+{
+	if (FindUserByUserNameAndPaasword(AccoutnNumber, PinCode, ClinetRecords))
+	{
+		return true;
+	}
+
+	return false;
+}
+void Login()
+{
+	string AccountNumber, PinCode;
+	bool FlagLogin = false;
+	do
+	{
+		system("cls");
+		cout << "\n___________________________________\n";
+		cout << "\tLogin Screen";
+		cout << "\n___________________________________\n";
+
+		if (FlagLogin)
+		{
+			cout << "Invlaid Username/Password!\n";
+		}
+
+		cout << "\nEnter Acount Number? ";
+		getline(cin >> ws, AccountNumber);
+		cout << "\nEnter Pin? ";
+		getline(cin >> ws, PinCode);
+
+		FlagLogin = !LoadUserInfo(AccountNumber, PinCode);
+
+	} while (FlagLogin);
+
+	ShowMenueATMScreen();
+}
+int main()
+{
+	Login();
+	return 0;
+}
